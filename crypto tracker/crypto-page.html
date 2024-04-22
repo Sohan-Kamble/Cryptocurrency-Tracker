@@ -1,0 +1,287 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Cryptocurrency Price Charts</title>
+    <style>
+        @import url('https://fonts.googleapis.com/css?family=Roboto&display=swap');
+        
+        html {
+            font-size: 16px;
+        }
+
+        body {
+            font-family: 'Roboto', sans-serif;
+            background: linear-gradient(135deg, #2980b9, #2c3e50);
+            color: #181515;
+            margin: 0;
+            padding: 0;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            min-height: 100vh;
+        }
+
+        .chart-container {
+            width: 90%;
+            max-width: 800px;
+            background-color: rgba(0, 0, 0, 0.7);
+            box-shadow: 0 0 1rem rgba(0, 0, 0, 0.3);
+            padding: 2rem;
+            border-radius: 10px;
+            margin-bottom: 2rem;
+        }
+
+        h1 {
+            font-size: 2rem;
+            margin-bottom: 1rem;
+            text-align: center;
+            color: #61dafb;
+        }
+
+        .crypto-name {
+            font-size: 1.5rem;
+            color: #f8cccd;
+            cursor: pointer;
+            transition: color 0.3s ease;
+        }
+
+        .crypto-name:hover {
+            color: #61dafb;
+        }
+
+        .chart {
+            opacity: 0;
+            transform: scale(0.95);
+            transition: opacity 0.5s ease, transform 0.5s ease;
+        }
+
+        .chart.loaded {
+            opacity: 1;
+            transform: scale(1);
+        }
+
+        .loader {
+            display: block;
+            position: fixed;
+            top: 0;
+            bottom: 0;
+            left: 0;
+            right: 0;
+            background-color: rgba(0, 0, 0, 0.8);
+            z-index: 2019;
+        }
+
+        .loader span {
+            display: flex;
+            flex-wrap: wrap;
+            justify-content: center;
+            align-items: center;
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            width: 5rem;
+            height: 5rem;
+        }
+
+        .loader span:after,
+        .loader span:before {
+            content: "";
+            display: block;
+            width: 1.5rem;
+            height: 1.5rem;
+            background-color: #61dafb;
+            border-radius: 50%;
+            animation: loader 1s ease;
+            transform-origin: center center;
+            animation-iteration-count: infinite;
+        }
+
+        .loader span:after {
+            margin-left: -0.25rem;
+        }
+
+        .loader span:before {
+            background-color: #61dafb;
+            margin-right: -0.25rem;
+            transform-origin: center center;
+        }
+
+        @keyframes loader {
+            0% {
+                transform: skewY(0) translate(0);
+            }
+            33% {
+                transform: skewY(10deg) translate(4rem);
+            }
+            66% {
+                transform: skewY(-10deg) translate(-4rem);
+            }
+            100% {
+                transform: skewY(0) translate(0);
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="chart-container">
+        <h1>Top 10 Cryptocurrency Price Charts</h1>
+        <div id="crypto-charts">
+        </div>
+    </div>
+
+    <div class="loader">
+        <span></span>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/apexcharts"></script>
+    <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+    <script>
+        const topCryptos = [
+            { name: 'Bitcoin', symbol: 'BTC' },
+            { name: 'Ethereum', symbol: 'ETH' },
+            { name: 'Cardano', symbol: 'ADA' },
+            { name: 'Binance Coin', symbol: 'BNB' },
+            { name: 'Solana', symbol: 'SOL' },
+            { name: 'XRP', symbol: 'XRP' },
+            { name: 'Polkadot', symbol: 'DOT' },
+            { name: 'Dogecoin', symbol: 'DOGE' },
+            { name: 'Avalanche', symbol: 'AVAX' },
+            { name: 'Terra', symbol: 'LUNA' }
+        ];
+        function createCryptoChart(crypto) {
+            const container = document.getElementById('crypto-charts');
+            const chartDiv = document.createElement('div');
+            chartDiv.classList.add('chart-container');
+            chartDiv.innerHTML = `
+                <h2 class="crypto-name">${crypto.name}</h2>
+                <div class="chart" id="chart-${crypto.symbol}"></div>
+            `;
+            container.appendChild(chartDiv);
+
+            const chartUrl = `https://min-api.cryptocompare.com/data/histoday?fsym=${crypto.symbol}&tsym=USD&limit=30`;
+            let dataSet = [];
+
+            function ajax_request(url) {
+                let xhttp;
+                xhttp = new XMLHttpRequest();
+                xhttp.onreadystatechange = function() {
+                    if (this.readyState == 4 && this.status == 200) {
+                        handle_chart(this);
+                    }
+                }
+                xhttp.open("GET", url, true);
+                xhttp.send();
+            }
+
+            function handle_chart(data) {
+                let parsed_data = JSON.parse(data.responseText);
+                parsed_data = parsed_data.Data;
+                
+                $.each(parsed_data, function(index, value) {
+                    dataSet.push([value.time * 1000, value.high]);
+                });
+                
+                let options = {
+                    chart: {
+                        type: 'area',
+                        height: 350,
+                        background: 'transparent',
+                        foreColor: '#ffffff'
+                    },
+                    title: {
+                        text: `${crypto.name} Price Over the Last 30 Days`,
+                        align: 'center',
+                        margin: 10,
+                        offsetX: 0,
+                        offsetY: 0,
+                        floating: false,
+                        style: {
+                            fontSize: '24px',
+                            color: '#61dafb'
+                        },
+                    },
+                    toolbar: {
+                        show: false,
+                        tools: {
+                            download: false,
+                            selection: false,
+                            zoom: false,
+                            zoomin: false,
+                            zoomout: false,
+                            pan: false,
+                            reset: false
+                        },
+                    },
+                    dataLabels: {
+                        enabled: false
+                    },
+                    tooltip: {
+                        x: {
+                            format: "dd MMM yyyy"
+                        },
+                        fixed: {
+                            enabled: false,
+                            position: 'topRight'
+                        }
+                    },
+                    fill: {
+                        opacity: 1,
+                        type: 'gradient'
+                    },
+                    colors: ['#F8CCCD'],
+                    series: [{
+                            name: `${crypto.name} (USD)`,
+                            data: dataSet
+                        },
+                    ],
+                    xaxis: {
+                        type: "datetime",
+                        axisBorder: {
+                            show: false
+                        },
+                        axisTicks: {
+                            show: false
+                        },
+                        labels: {
+                            style: {
+                                colors: '#ffffff'
+                            }
+                        }
+                    },
+                    yaxis: {
+                        labels: {
+                            style: {
+                                colors: '#ffffff'
+                            }
+                        }
+                    },
+                };
+                let chart = new ApexCharts(document.querySelector(`#chart-${crypto.symbol}`), options);
+                chart.render();
+            }
+
+            ajax_request(chartUrl);
+            const cryptoName = chartDiv.querySelector('.crypto-name');
+            cryptoName.addEventListener('click', () => {
+                window.location.href = `https://your-website.com/crypto/${crypto.symbol}`;
+            });
+        }
+        function createTopCryptoCharts() {
+            topCryptos.forEach(crypto => {
+                createCryptoChart(crypto);
+            });
+        }
+        $(window).on('load', function() {
+            createTopCryptoCharts();
+            setTimeout(function() {
+                $('.loader').fadeOut();
+                $('.chart').addClass('loaded');
+            }, 1200);
+        });
+    </script>
+</body>
+</html>
